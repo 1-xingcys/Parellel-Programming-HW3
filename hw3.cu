@@ -17,6 +17,106 @@
 
 #define pi 3.14159265358979323846
 
+//==============================================================================
+// CUDA Device-Side Helper Functions
+// (用以取代 GLM 的功能)
+//==============================================================================
+
+// --- Clamp (fmin/fmax) ---
+// 使用 __device__ __forceinline__ 建議編譯器將其內聯
+__device__ __forceinline__ double clamp(double val, double min, double max) {
+    return fmin(fmax(val, min), max);
+}
+
+__device__ __forceinline__ double3 clamp(double3 val, double min, double max) {
+    return make_double3(clamp(val.x, min, max),
+                        clamp(val.y, min, max),
+                        clamp(val.z, min, max));
+}
+
+
+// --- double3 的運算子重載 ---
+__device__ __forceinline__ double3 operator+(double3 a, double3 b) {
+    return make_double3(a.x + b.x, a.y + b.y, a.z + b.z);
+}
+__device__ __forceinline__ double3 operator+(double3 a, double b) {
+    return make_double3(a.x + b, a.y + b, a.z + b);
+}
+__device__ __forceinline__ void operator+=(double3 &a, double3 b) {
+    a.x += b.x; a.y += b.y; a.z += b.z;
+}
+__device__ __forceinline__ void operator+=(double3 &a, double b) {
+    a.x += b; a.y += b; a.z += b;
+}
+__device__ __forceinline__ double3 operator-(double3 a, double3 b) {
+    return make_double3(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+__device__ __forceinline__ double3 operator-(double3 a) { // Unary minus
+    return make_double3(-a.x, -a.y, -a.z);
+}
+__device__ __forceinline__ double3 operator*(double3 a, double s) { // vec * scalar
+    return make_double3(a.x * s, a.y * s, a.z * s);
+}
+__device__ __forceinline__ double3 operator*(double s, double3 a) { // scalar * vec
+    return make_double3(a.x * s, a.y * s, a.z * s); // << 修正： b10502010 感謝您，這裡修正 a.Y -> a.y
+}
+__device__ __forceinline__ double3 operator*(double3 a, double3 b) { // component-wise
+    return make_double3(a.x * b.x, a.y * b.y, a.z * b.z);
+}
+__device__ __forceinline__ void operator*=(double3 &a, double3 b) { // component-wise
+    a.x *= b.x; a.y *= b.y; a.z *= b.z;
+}
+__device__ __forceinline__ double3 operator/(double3 a, double s) {
+    return make_double3(a.x / s, a.y / s, a.z / s);
+}
+
+// --- double2 的運算子重載 ---
+__device__ __forceinline__ double2 operator+(double2 a, double2 b) {
+    return make_double2(a.x + b.x, a.y + b.y);
+}
+__device__ __forceinline__ double2 operator-(double2 a, double2 b) {
+    return make_double2(a.x - b.x, a.y - b.y);
+}
+__device__ __forceinline__ double2 operator-(double2 a) { // Unary minus
+    return make_double2(-a.x, -a.y);
+}
+__device__ __forceinline__ double2 operator*(double s, double2 a) { // scalar * vec
+    return make_double2(a.x * s, a.y * s);
+}
+__device__ __forceinline__ double2 operator/(double2 a, double s) {
+    return make_double2(a.x / s, a.y / s);
+}
+
+// --- 向量數學函式 ---
+__device__ __forceinline__ double dot(double3 a, double3 b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+__device__ __forceinline__ double length(double3 v) {
+    return sqrt(dot(v, v));
+}
+__device__ __forceinline__ double3 normalize(double3 v) {
+    // 避免除以零 (如果 length 為 0，回傳 (0,0,0) 避免 NaN)
+    double l = length(v);
+    if (l == 0.0) return make_double3(0.0, 0.0, 0.0);
+    double invLen = 1.0 / l;
+    return v * invLen;
+}
+__device__ __forceinline__ double3 cross(double3 a, double3 b) {
+    return make_double3(a.y * b.z - a.z * b.y,
+                        a.z * b.x - a.x * b.z,
+                        a.x * b.y - a.y * b.x);
+}
+// 針對 pow(vec, vec) 的逐元素 (component-wise) pow
+__device__ __forceinline__ double3 pow(double3 a, double3 b) {
+    return make_double3(pow(a.x, b.x), pow(a.y, b.y), pow(a.z, b.z));
+}
+// 針對 pow(vec, scalar) 的逐元素 pow
+__device__ __forceinline__ double3 pow(double3 a, double b) {
+    return make_double3(pow(a.x, b), pow(a.y, b), pow(a.z, b));
+}
+
+// -----------------------------------------------------------------------------
+
 // 原始 C++ 程式碼中的全域變數，現在移入此結構體
 struct RenderParams {
     double power;
@@ -82,27 +182,22 @@ void write_png(const char* filename, unsigned char* raw_image, unsigned int widt
 __device__ double md(double3 p, double& trap) {
     double3 v = p;
     double dr = 1.;
-    double r = length(v); // glm::length -> length (CUDA built-in)
+    double r = length(v); 
     trap = r;
 
     // 使用常數記憶體中的參數
     for (int i = 0; i < d_params.md_iter; ++i) {
-        // glm::atan(v.y, v.x) -> atan2(v.y, v.x)
         double theta = atan2(v.y, v.x) * d_params.power;
-        // glm::asin(v.z / r) -> asin(v.z / r)
         double phi = asin(v.z / r) * d_params.power;
         
-        // glm::pow -> pow
         dr = d_params.power * pow(r, d_params.power - 1.) * dr + 1.;
         
         double r_pow = pow(r, d_params.power);
-        // make_double3 for vec3(...)
         double3 v_new = make_double3(cos(theta) * cos(phi), 
                                     cos(phi) * sin(theta), 
                                     -sin(phi));
         v = p + r_pow * v_new;
 
-        // glm::min -> fmin (for doubles)
         trap = fmin(trap, r);
         r = length(v);
         if (r > d_params.bailout) break;
@@ -112,8 +207,6 @@ __device__ double md(double3 p, double& trap) {
 
 // scene mapping
 __device__ double map(double3 p, double& trap, int& ID) {
-    // vec2 rt = vec2(cos(pi / 2.), sin(pi / 2.)); // (0, 1)
-    // mat3(...) * p;
     // 原始碼的矩陣乘法是繞 X 軸旋轉 90 度
     // (x, y, z) -> (x, z, -y)
     double3 rp = make_double3(p.x, p.z, -p.y);
@@ -130,12 +223,10 @@ __device__ double map(double3 p) {
 
 // simple palette function (borrowed from Inigo Quilez)
 __device__ double3 pal(double t, double3 a, double3 b, double3 c, double3 d) {
-    // glm::cos -> cos. CUDA Math API 會處理 double
     double cos_val_r = cos(2. * pi * (c.x * t + d.x));
     double cos_val_g = cos(2. * pi * (c.y * t + d.y));
     double cos_val_b = cos(2. * pi * (c.z * t + d.z));
     
-    // (a, b, c, d 都是 double3)
     return a + b * make_double3(cos_val_r, cos_val_g, cos_val_b);
 }
 
@@ -145,9 +236,9 @@ __device__ double softshadow(double3 ro, double3 rd, double k) {
     double t = 0.;
     for (int i = 0; i < d_params.shadow_step; ++i) {
         double h = map(ro + rd * t);
-        res = fmin(res, k * h / t); // glm::min -> fmin
+        res = fmin(res, k * h / t); 
         if (res < 0.02) return 0.02;
-        // glm::clamp -> clamp (CUDA built-in)
+        // 使用我們自己的 clamp 輔助函式
         t += clamp(h, .001, d_params.step_limiter);
     }
     return clamp(res, .02, 1.);
@@ -155,17 +246,13 @@ __device__ double softshadow(double3 ro, double3 rd, double k) {
 
 // use gradient to calc surface normal
 __device__ double3 calcNor(double3 p) {
-    // vec2 e = vec2(eps, 0.); -> double2 e
     double2 e = make_double2(d_params.eps, 0.0);
     
-    // e.xyy() -> (eps, 0, 0)
-    double3 e_xyy = make_double3(e.x, e.y, e.y);
-    // e.yxy() -> (0, eps, 0)
-    double3 e_yxy = make_double3(e.y, e.x, e.y);
-    // e.yyx() -> (0, 0, eps)
-    double3 e_yyx = make_double3(e.y, e.y, e.x);
+    double3 e_xyy = make_double3(e.x, e.y, e.y); // (eps, 0, 0)
+    double3 e_yxy = make_double3(e.y, e.x, e.y); // (0, eps, 0)
+    double3 e_yyx = make_double3(e.y, e.y, e.x); // (0, 0, eps)
 
-    return normalize(make_double3( // glm::normalize -> normalize
+    return normalize(make_double3( 
         map(p + e_xyy) - map(p - e_xyy),
         map(p + e_yxy) - map(p - e_yxy),
         map(p + e_yyx) - map(p - e_yyx)
@@ -179,7 +266,6 @@ __device__ double trace(double3 ro, double3 rd, double& trap, int& ID) {
 
     for (int i = 0; i < d_params.ray_step; ++i) {
         len = map(ro + rd * t, trap, ID);
-        // glm::abs -> fabs (for double)
         if (fabs(len) < d_params.eps || t > d_params.far_plane) break;
         t += len * d_params.ray_multiplier;
     }
@@ -195,7 +281,6 @@ __device__ double trace(double3 ro, double3 rd, double& trap, int& ID) {
 __global__ void render_kernel(unsigned char* d_image, int width, int height) {
     
     // 計算全域執行緒 ID (對應到像素座標)
-    // blockIdx, blockDim, threadIdx 是 CUDA 內建變數
     int j = blockIdx.x * blockDim.x + threadIdx.x; // 像素 x 座標 (width)
     int i = blockIdx.y * blockDim.y + threadIdx.y; // 像素 y 座標 (height)
 
@@ -206,29 +291,26 @@ __global__ void render_kernel(unsigned char* d_image, int width, int height) {
 
     // --- 程式碼主體：從 CPU main() 迴圈中複製而來 ---
     
-    // vec4 fcol(0.); -> 使用 double
     double fcol_r = 0.0;
     double fcol_g = 0.0;
     double fcol_b = 0.0;
 
-    // anti aliasing (使用常數記憶體中的 d_params.AA)
+    // anti aliasing
     for (int m = 0; m < d_params.AA; ++m) {
         for (int n = 0; n < d_params.AA; ++n) {
             
-            // vec2 p = vec2(j, i) + ...
             double2 p = make_double2((double)j, (double)i) + 
                        make_double2((double)m, (double)n) / (double)d_params.AA;
 
             // vec2 uv = ... (使用 d_params.iResolution)
-            double2 uv = (-d_params.iResolution + 2. * p) / d_params.iResolution.y;
-            uv.y *= -1;
+            // (原始碼中 -iResolution.xy() + 2. * p)
+            double2 uv = (make_double2(2.*p.x, 2.*p.y) - d_params.iResolution) / d_params.iResolution.y;
+            uv.y *= -1; // Y 軸翻轉
 
             // create camera
-            // (使用 d_params.camera_pos, target_pos, FOV)
             double3 ro = d_params.camera_pos;
             double3 ta = d_params.target_pos;
-            double3 cf = normalize(ta - ro); // glm::normalize -> normalize
-            // glm::cross -> cross
+            double3 cf = normalize(ta - ro); 
             double3 cs = normalize(cross(cf, make_double3(0., 1., 0.))); 
             double3 cu = normalize(cross(cs, cf));
             double3 rd = normalize(uv.x * cs + uv.y * cu + d_params.FOV * cf);
@@ -239,7 +321,6 @@ __global__ void render_kernel(unsigned char* d_image, int width, int height) {
             double d = trace(ro, rd, trap, objID);
 
             // lighting
-            // vec3 col(0.);
             double3 col = make_double3(0.0, 0.0, 0.0);
             double3 sd = normalize(d_params.camera_pos); // Sun direction
             double3 sc = make_double3(1., .9, .717);     // Light color
@@ -252,17 +333,14 @@ __global__ void render_kernel(unsigned char* d_image, int width, int height) {
                 double3 nr = calcNor(pos);
                 double3 hal = normalize(sd - rd); // blinn-phong
 
-                // vec3(.5) -> make_double3(.5, .5, .5)
                 col = pal(trap - .4, make_double3(.5, .5, .5), make_double3(.5, .5, .5), 
                           make_double3(1., 1., 1.), make_double3(.0, .1, .2));
                 double3 ambc = make_double3(0.3, 0.3, 0.3);
                 double gloss = 32.;
 
                 // simple blinn phong
-                // glm::clamp -> clamp
                 double amb = (0.7 + 0.3 * nr.y) * (0.2 + 0.8 * clamp(0.05 * log(trap), 0.0, 1.0));
                 double sdw = softshadow(pos + 0.001 * nr, sd, 16.);
-                // glm::dot -> dot
                 double dif = clamp(dot(sd, nr), 0., 1.) * sdw;
                 double spe = pow(clamp(dot(nr, hal), 0., 1.), gloss) * dif;
 
@@ -271,32 +349,26 @@ __global__ void render_kernel(unsigned char* d_image, int width, int height) {
                 lin += sc * dif * 0.8;
                 col *= lin;
 
-                // glm::pow(col, vec3(...)) -> pow(col, make_double3(...))
-                // (注意: pow(double3, double3) 在 CUDA 中可能不直接支援，
-                // 但 pow(double3, double) 可以。這裡原始碼是 pow(vec, vec)。)
-                // (更正：CUDA Math API 沒有 pow(double3, double3)。
-                // 原始碼的 glm::pow(vec, vec) 是逐元素 pow。我們手動實現。)
-                col = make_double3(pow(col.x, 0.7), pow(col.y, 0.9), pow(col.z, 1.0));
+                // 逐元素 pow
+                col = pow(col, make_double3(0.7, 0.9, 1.0));
                 col += spe * 0.8;
             }
 
-            // Gamma correction (glm::pow(col, vec3(.4545)))
+            // Gamma correction 
+            // 這裡現在會呼叫我們新增的 clamp(double3, double, double) 重載
             col = clamp(pow(col, make_double3(0.4545, 0.4545, 0.4545)), 0.0, 1.0);
             
-            // fcol += vec4(col, 1.);
-            fcol_r += col.x; // .x for double3
-            fcol_g += col.y; // .y for double3
-            fcol_b += col.z; // .z for double3
+            fcol_r += col.x; 
+            fcol_g += col.y; 
+            fcol_b += col.z; 
         }
     }
     // --- 迴圈結束 ---
 
-    // fcol /= (double)(AA * AA);
     fcol_r /= (double)(d_params.AA * d_params.AA);
     fcol_g /= (double)(d_params.AA * d_params.AA);
     fcol_b /= (double)(d_params.AA * d_params.AA);
     
-    // fcol *= 255.0;
     fcol_r *= 255.0;
     fcol_g *= 255.0;
     fcol_b *= 255.0;
@@ -319,7 +391,6 @@ int main(int argc, char** argv) {
     assert(argc == 10);
 
     //--- init arguments
-    // 使用 Host 端的結構體來收集參數
     RenderParams h_params; 
     
     h_params.camera_pos = make_double3(atof(argv[1]), atof(argv[2]), atof(argv[3]));
@@ -350,9 +421,6 @@ int main(int argc, char** argv) {
     //--- create host image buffer
     unsigned char* raw_image = new unsigned char[width * height * 4];
     
-    // (原始碼中的 2D image** 陣列在 CUDA 版本中不再需要，
-    // 因為 CPU 不會逐像素寫入)
-
     //--- CUDA setup ---
     unsigned char* d_image; // Device (GPU) image buffer
     size_t image_size = width * height * 4 * sizeof(unsigned char);
@@ -367,17 +435,16 @@ int main(int argc, char** argv) {
     //--- Kernel launch setup ---
     
     // 3. 設定 Block 尺寸 (16x16 = 256 threads)
-    // 這是基於 V100 (Warp=32) 的良好選擇
     dim3 blockDim(16, 16); 
     
-    // 4. 設定 Grid 尺寸 (計算總共需要多少個 Block)
+    // 4. 設定 Grid 尺寸
     dim3 gridDim((width + blockDim.x - 1) / blockDim.x, 
                    (height + blockDim.y - 1) / blockDim.y);
 
     printf("Grid Dimensions: (%d, %d), Block Dimensions: (%d, %d)\n", 
            gridDim.x, gridDim.y, blockDim.x, blockDim.y);
 
-    // 5. (可選) 使用 CUDA Events 測量 Kernel 執行時間
+    // 5. 使用 CUDA Events 測量 Kernel 執行時間
     cudaEvent_t start, stop;
     CUDA_CHECK(cudaEventCreate(&start));
     CUDA_CHECK(cudaEventCreate(&stop));
@@ -386,17 +453,14 @@ int main(int argc, char** argv) {
     CUDA_CHECK(cudaEventRecord(start));
 
     //--- 6. 啟動 Kernel ---
-    // (CPU 在此處將控制權交給 GPU)
     render_kernel<<<gridDim, blockDim>>>(d_image, width, height);
 
     //--- Post-kernel operations ---
-    
-    // 檢查 Kernel 啟動期間是否發生錯誤
     CUDA_CHECK(cudaGetLastError());
     
     // 7. 同步 CPU 和 GPU，並停止計時
     CUDA_CHECK(cudaEventRecord(stop));
-    CUDA_CHECK(cudaEventSynchronize(stop)); // 等待 Kernel 完成
+    CUDA_CHECK(cudaEventSynchronize(stop)); 
 
     float milliseconds = 0;
     CUDA_CHECK(cudaEventElapsedTime(&milliseconds, start, stop));
@@ -414,8 +478,8 @@ int main(int argc, char** argv) {
     //--- 9. finalize (釋放資源)
     CUDA_CHECK(cudaEventDestroy(start));
     CUDA_CHECK(cudaEventDestroy(stop));
-    CUDA_CHECK(cudaFree(d_image)); // 釋放 GPU 記憶體
-    delete[] raw_image;           // 釋放 CPU 記憶體
+    CUDA_CHECK(cudaFree(d_image)); 
+    delete[] raw_image;           
     //---
 
     printf("Done.\n");
