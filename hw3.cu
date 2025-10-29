@@ -415,8 +415,8 @@ int main(int argc, char** argv) {
     h_params.far_plane = far_plane;
     //---
 
-    printf("Initializing CUDA Mandelbulb Renderer...\n");
-    printf("Resolution: %u x %u\n", width, height);
+    // printf("Initializing CUDA Mandelbulb Renderer...\n");
+    // printf("Resolution: %u x %u\n", width, height);
 
     //--- create host image buffer
     unsigned char* raw_image = new unsigned char[width * height * 4];
@@ -426,7 +426,7 @@ int main(int argc, char** argv) {
     size_t image_size = width * height * 4 * sizeof(unsigned char);
 
     // 1. 分配 GPU 記憶體
-    printf("Allocating %lu bytes on GPU...\n", image_size);
+    // printf("Allocating %lu bytes on GPU...\n", image_size);
     CUDA_CHECK(cudaMalloc(&d_image, image_size));
 
     // 2. 將渲染參數從 Host (h_params) 複製到 Device 的 __constant__ 記憶體 (d_params)
@@ -441,15 +441,15 @@ int main(int argc, char** argv) {
     dim3 gridDim((width + blockDim.x - 1) / blockDim.x, 
                    (height + blockDim.y - 1) / blockDim.y);
 
-    printf("Grid Dimensions: (%d, %d), Block Dimensions: (%d, %d)\n", 
-           gridDim.x, gridDim.y, blockDim.x, blockDim.y);
+    // printf("Grid Dimensions: (%d, %d), Block Dimensions: (%d, %d)\n", 
+        //    gridDim.x, gridDim.y, blockDim.x, blockDim.y);
 
     // 5. 使用 CUDA Events 測量 Kernel 執行時間
     cudaEvent_t start, stop;
     CUDA_CHECK(cudaEventCreate(&start));
     CUDA_CHECK(cudaEventCreate(&stop));
     
-    printf("Launching Kernel...\n");
+    // printf("Launching Kernel...\n");
     CUDA_CHECK(cudaEventRecord(start));
 
     //--- 6. 啟動 Kernel ---
@@ -464,14 +464,14 @@ int main(int argc, char** argv) {
 
     float milliseconds = 0;
     CUDA_CHECK(cudaEventElapsedTime(&milliseconds, start, stop));
-    printf("Kernel execution time: %.3f ms\n", milliseconds);
-    printf("Rendering complete. Copying image from GPU to CPU...\n");
+    // printf("Kernel execution time: %.3f ms\n", milliseconds);
+    // printf("Rendering complete. Copying image from GPU to CPU...\n");
 
     // 8. 將 GPU (d_image) 上的結果複製回 CPU (raw_image)
     CUDA_CHECK(cudaMemcpy(raw_image, d_image, image_size, cudaMemcpyDeviceToHost));
 
     //--- saving image
-    printf("Saving image to: %s\n", argv[9]);
+    // printf("Saving image to: %s\n", argv[9]);
     write_png(argv[9], raw_image, width, height);
     //---
 
@@ -482,6 +482,6 @@ int main(int argc, char** argv) {
     delete[] raw_image;           
     //---
 
-    printf("Done.\n");
+    // printf("Done.\n");
     return 0;
 }
