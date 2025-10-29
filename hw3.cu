@@ -241,10 +241,13 @@ __device__ float3 pal(float t, float3 a, float3 b, float3 c, float3 d) {
 __device__ float softshadow(float3 ro, float3 rd, float k) {
     float res = 1.0;
     float t = 0.;
+    float small_eps = 1e-6;
     for (int i = 0; i < d_params.shadow_step; ++i) {
         float h = map(ro + rd * t);
-        res = fmin(res, k * h / t); 
+        float denom = fmax(t, small_eps);
+        res = fmin(res, k * h / denom); 
         if (res < 0.02) return 0.02;
+        if (t > d_params.far_plane) break;
         // 使用我們自己的 clamp 輔助函式
         t += clamp(h, .001, d_params.step_limiter);
     }
