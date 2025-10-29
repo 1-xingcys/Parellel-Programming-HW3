@@ -189,14 +189,21 @@ __device__ float md(float3 p, float& trap) {
     for (int i = 0; i < d_params.md_iter; ++i) {
         float theta = atan2(v.y, v.x) * d_params.power;
         float phi = asin(v.z / r) * d_params.power;
+        float s_th, c_th, s_ph, c_ph;
+        sincos(theta, &s_th, &c_th);
+        sincos(phi,   &s_ph, &c_ph);
+
+        float r2 = r * r;
+        float r4 = r2 * r2;
+        float r8 = r4 * r4;
+        float r7 = r8 / r;
         
-        dr = d_params.power * pow(r, d_params.power - 1.) * dr + 1.;
+        dr = d_params.power * r7 * dr + 1.;
         
-        float r_pow = pow(r, d_params.power);
-        float3 v_new = make_float3(cos(theta) * cos(phi), 
-                                    cos(phi) * sin(theta), 
-                                    -sin(phi));
-        v = p + r_pow * v_new;
+        float3 v_new = make_float3(c_th * c_ph, 
+                                    c_ph * s_th, 
+                                    -s_ph);
+        v = p + r8 * v_new;
 
         trap = fmin(trap, r);
         r = length(v);
@@ -464,7 +471,7 @@ int main(int argc, char** argv) {
 
     float milliseconds = 0;
     CUDA_CHECK(cudaEventElapsedTime(&milliseconds, start, stop));
-    // printf("Kernel execution time: %.3f ms\n", milliseconds);
+    printf("Kernel execution time: %.3f ms\n", milliseconds);
     // printf("Rendering complete. Copying image from GPU to CPU...\n");
 
     // 8. 將 GPU (d_image) 上的結果複製回 CPU (raw_image)
