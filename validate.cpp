@@ -93,9 +93,9 @@ int main(int argc, char** argv) {
             }
             
             // (可選) 如果需要找出不相符的 pixel 在哪裡，可以在此處加入 else：
-            else {
-               std::cout << "Pixel 不符 @ (" << x << ", " << y << ")" << std::endl;
-            }
+            // else {
+            //    std::cout << "Pixel 不符 @ (" << x << ", " << y << ")" << std::endl;
+            // }
         }
     }
 
