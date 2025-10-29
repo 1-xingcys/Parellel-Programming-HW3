@@ -7,7 +7,7 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 
-// 用於 device 端的向量類型 (如 double3, double2)
+// 用於 device 端的向量類型 (如 float3, float2)
 #include <vector_types.h>
 
 // LodePNG 用於儲存影像
@@ -24,114 +24,114 @@
 
 // --- Clamp (fmin/fmax) ---
 // 使用 __device__ __forceinline__ 建議編譯器將其內聯
-__device__ __forceinline__ double clamp(double val, double min, double max) {
+__device__ __forceinline__ float clamp(float val, float min, float max) {
     return fmin(fmax(val, min), max);
 }
 
-__device__ __forceinline__ double3 clamp(double3 val, double min, double max) {
-    return make_double3(clamp(val.x, min, max),
+__device__ __forceinline__ float3 clamp(float3 val, float min, float max) {
+    return make_float3(clamp(val.x, min, max),
                         clamp(val.y, min, max),
                         clamp(val.z, min, max));
 }
 
 
-// --- double3 的運算子重載 ---
-__device__ __forceinline__ double3 operator+(double3 a, double3 b) {
-    return make_double3(a.x + b.x, a.y + b.y, a.z + b.z);
+// --- float3 的運算子重載 ---
+__device__ __forceinline__ float3 operator+(float3 a, float3 b) {
+    return make_float3(a.x + b.x, a.y + b.y, a.z + b.z);
 }
-__device__ __forceinline__ double3 operator+(double3 a, double b) {
-    return make_double3(a.x + b, a.y + b, a.z + b);
+__device__ __forceinline__ float3 operator+(float3 a, float b) {
+    return make_float3(a.x + b, a.y + b, a.z + b);
 }
-__device__ __forceinline__ void operator+=(double3 &a, double3 b) {
+__device__ __forceinline__ void operator+=(float3 &a, float3 b) {
     a.x += b.x; a.y += b.y; a.z += b.z;
 }
-__device__ __forceinline__ void operator+=(double3 &a, double b) {
+__device__ __forceinline__ void operator+=(float3 &a, float b) {
     a.x += b; a.y += b; a.z += b;
 }
-__device__ __forceinline__ double3 operator-(double3 a, double3 b) {
-    return make_double3(a.x - b.x, a.y - b.y, a.z - b.z);
+__device__ __forceinline__ float3 operator-(float3 a, float3 b) {
+    return make_float3(a.x - b.x, a.y - b.y, a.z - b.z);
 }
-__device__ __forceinline__ double3 operator-(double3 a) { // Unary minus
-    return make_double3(-a.x, -a.y, -a.z);
+__device__ __forceinline__ float3 operator-(float3 a) { // Unary minus
+    return make_float3(-a.x, -a.y, -a.z);
 }
-__device__ __forceinline__ double3 operator*(double3 a, double s) { // vec * scalar
-    return make_double3(a.x * s, a.y * s, a.z * s);
+__device__ __forceinline__ float3 operator*(float3 a, float s) { // vec * scalar
+    return make_float3(a.x * s, a.y * s, a.z * s);
 }
-__device__ __forceinline__ double3 operator*(double s, double3 a) { // scalar * vec
-    return make_double3(a.x * s, a.y * s, a.z * s); // << 修正： b10502010 感謝您，這裡修正 a.Y -> a.y
+__device__ __forceinline__ float3 operator*(float s, float3 a) { // scalar * vec
+    return make_float3(a.x * s, a.y * s, a.z * s); // << 修正： b10502010 感謝您，這裡修正 a.Y -> a.y
 }
-__device__ __forceinline__ double3 operator*(double3 a, double3 b) { // component-wise
-    return make_double3(a.x * b.x, a.y * b.y, a.z * b.z);
+__device__ __forceinline__ float3 operator*(float3 a, float3 b) { // component-wise
+    return make_float3(a.x * b.x, a.y * b.y, a.z * b.z);
 }
-__device__ __forceinline__ void operator*=(double3 &a, double3 b) { // component-wise
+__device__ __forceinline__ void operator*=(float3 &a, float3 b) { // component-wise
     a.x *= b.x; a.y *= b.y; a.z *= b.z;
 }
-__device__ __forceinline__ double3 operator/(double3 a, double s) {
-    return make_double3(a.x / s, a.y / s, a.z / s);
+__device__ __forceinline__ float3 operator/(float3 a, float s) {
+    return make_float3(a.x / s, a.y / s, a.z / s);
 }
 
-// --- double2 的運算子重載 ---
-__device__ __forceinline__ double2 operator+(double2 a, double2 b) {
-    return make_double2(a.x + b.x, a.y + b.y);
+// --- float2 的運算子重載 ---
+__device__ __forceinline__ float2 operator+(float2 a, float2 b) {
+    return make_float2(a.x + b.x, a.y + b.y);
 }
-__device__ __forceinline__ double2 operator-(double2 a, double2 b) {
-    return make_double2(a.x - b.x, a.y - b.y);
+__device__ __forceinline__ float2 operator-(float2 a, float2 b) {
+    return make_float2(a.x - b.x, a.y - b.y);
 }
-__device__ __forceinline__ double2 operator-(double2 a) { // Unary minus
-    return make_double2(-a.x, -a.y);
+__device__ __forceinline__ float2 operator-(float2 a) { // Unary minus
+    return make_float2(-a.x, -a.y);
 }
-__device__ __forceinline__ double2 operator*(double s, double2 a) { // scalar * vec
-    return make_double2(a.x * s, a.y * s);
+__device__ __forceinline__ float2 operator*(float s, float2 a) { // scalar * vec
+    return make_float2(a.x * s, a.y * s);
 }
-__device__ __forceinline__ double2 operator/(double2 a, double s) {
-    return make_double2(a.x / s, a.y / s);
+__device__ __forceinline__ float2 operator/(float2 a, float s) {
+    return make_float2(a.x / s, a.y / s);
 }
 
 // --- 向量數學函式 ---
-__device__ __forceinline__ double dot(double3 a, double3 b) {
+__device__ __forceinline__ float dot(float3 a, float3 b) {
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }
-__device__ __forceinline__ double length(double3 v) {
+__device__ __forceinline__ float length(float3 v) {
     return sqrt(dot(v, v));
 }
-__device__ __forceinline__ double3 normalize(double3 v) {
+__device__ __forceinline__ float3 normalize(float3 v) {
     // 避免除以零 (如果 length 為 0，回傳 (0,0,0) 避免 NaN)
-    double l = length(v);
-    if (l == 0.0) return make_double3(0.0, 0.0, 0.0);
-    double invLen = 1.0 / l;
+    float l = length(v);
+    if (l == 0.0) return make_float3(0.0, 0.0, 0.0);
+    float invLen = 1.0 / l;
     return v * invLen;
 }
-__device__ __forceinline__ double3 cross(double3 a, double3 b) {
-    return make_double3(a.y * b.z - a.z * b.y,
+__device__ __forceinline__ float3 cross(float3 a, float3 b) {
+    return make_float3(a.y * b.z - a.z * b.y,
                         a.z * b.x - a.x * b.z,
                         a.x * b.y - a.y * b.x);
 }
 // 針對 pow(vec, vec) 的逐元素 (component-wise) pow
-__device__ __forceinline__ double3 pow(double3 a, double3 b) {
-    return make_double3(pow(a.x, b.x), pow(a.y, b.y), pow(a.z, b.z));
+__device__ __forceinline__ float3 pow(float3 a, float3 b) {
+    return make_float3(pow(a.x, b.x), pow(a.y, b.y), pow(a.z, b.z));
 }
 // 針對 pow(vec, scalar) 的逐元素 pow
-__device__ __forceinline__ double3 pow(double3 a, double b) {
-    return make_double3(pow(a.x, b), pow(a.y, b), pow(a.z, b));
+__device__ __forceinline__ float3 pow(float3 a, float b) {
+    return make_float3(pow(a.x, b), pow(a.y, b), pow(a.z, b));
 }
 
 // -----------------------------------------------------------------------------
 
 // 原始 C++ 程式碼中的全域變數，現在移入此結構體
 struct RenderParams {
-    double power;
+    float power;
     int md_iter;
     int ray_step;
     int shadow_step;
-    double step_limiter;
-    double ray_multiplier;
-    double bailout;
-    double eps;
-    double FOV;
-    double far_plane;
-    double3 camera_pos;
-    double3 target_pos;
-    double2 iResolution;
+    float step_limiter;
+    float ray_multiplier;
+    float bailout;
+    float eps;
+    float FOV;
+    float far_plane;
+    float3 camera_pos;
+    float3 target_pos;
+    float2 iResolution;
     int AA;
 };
 
@@ -141,16 +141,16 @@ __constant__ RenderParams d_params;
 
 // 原始 CPU 程式碼中的變數 (用於 main 函式初始化)
 int AA = 3;
-double power = 8.0;
-double md_iter = 24;
-double ray_step = 10000;
-double shadow_step = 1500;
-double step_limiter = 0.2;
-double ray_multiplier = 0.1;
-double bailout = 2.0;
-double eps = 0.0005;
-double FOV = 1.5;
-double far_plane = 100.;
+float power = 8.0;
+float md_iter = 24;
+float ray_step = 10000;
+float shadow_step = 1500;
+float step_limiter = 0.2;
+float ray_multiplier = 0.1;
+float bailout = 2.0;
+float eps = 0.0005;
+float FOV = 1.5;
+float far_plane = 100.;
 
 
 // CUDA 錯誤檢查宏
@@ -179,21 +179,21 @@ void write_png(const char* filename, unsigned char* raw_image, unsigned int widt
 
 // mandelbulb distance function (DE)
 // __device__ 表示此函式在 GPU 上執行
-__device__ double md(double3 p, double& trap) {
-    double3 v = p;
-    double dr = 1.;
-    double r = length(v); 
+__device__ float md(float3 p, float& trap) {
+    float3 v = p;
+    float dr = 1.;
+    float r = length(v); 
     trap = r;
 
     // 使用常數記憶體中的參數
     for (int i = 0; i < d_params.md_iter; ++i) {
-        double theta = atan2(v.y, v.x) * d_params.power;
-        double phi = asin(v.z / r) * d_params.power;
+        float theta = atan2(v.y, v.x) * d_params.power;
+        float phi = asin(v.z / r) * d_params.power;
         
         dr = d_params.power * pow(r, d_params.power - 1.) * dr + 1.;
         
-        double r_pow = pow(r, d_params.power);
-        double3 v_new = make_double3(cos(theta) * cos(phi), 
+        float r_pow = pow(r, d_params.power);
+        float3 v_new = make_float3(cos(theta) * cos(phi), 
                                     cos(phi) * sin(theta), 
                                     -sin(phi));
         v = p + r_pow * v_new;
@@ -206,36 +206,36 @@ __device__ double md(double3 p, double& trap) {
 }
 
 // scene mapping
-__device__ double map(double3 p, double& trap, int& ID) {
+__device__ float map(float3 p, float& trap, int& ID) {
     // 原始碼的矩陣乘法是繞 X 軸旋轉 90 度
     // (x, y, z) -> (x, z, -y)
-    double3 rp = make_double3(p.x, p.z, -p.y);
+    float3 rp = make_float3(p.x, p.z, -p.y);
     ID = 1;
     return md(rp, trap);
 }
 
 // dummy function overload
-__device__ double map(double3 p) {
-    double dmy;
+__device__ float map(float3 p) {
+    float dmy;
     int dmy2;
     return map(p, dmy, dmy2);
 }
 
 // simple palette function (borrowed from Inigo Quilez)
-__device__ double3 pal(double t, double3 a, double3 b, double3 c, double3 d) {
-    double cos_val_r = cos(2. * pi * (c.x * t + d.x));
-    double cos_val_g = cos(2. * pi * (c.y * t + d.y));
-    double cos_val_b = cos(2. * pi * (c.z * t + d.z));
+__device__ float3 pal(float t, float3 a, float3 b, float3 c, float3 d) {
+    float cos_val_r = cos(2. * pi * (c.x * t + d.x));
+    float cos_val_g = cos(2. * pi * (c.y * t + d.y));
+    float cos_val_b = cos(2. * pi * (c.z * t + d.z));
     
-    return a + b * make_double3(cos_val_r, cos_val_g, cos_val_b);
+    return a + b * make_float3(cos_val_r, cos_val_g, cos_val_b);
 }
 
 // second march: cast shadow
-__device__ double softshadow(double3 ro, double3 rd, double k) {
-    double res = 1.0;
-    double t = 0.;
+__device__ float softshadow(float3 ro, float3 rd, float k) {
+    float res = 1.0;
+    float t = 0.;
     for (int i = 0; i < d_params.shadow_step; ++i) {
-        double h = map(ro + rd * t);
+        float h = map(ro + rd * t);
         res = fmin(res, k * h / t); 
         if (res < 0.02) return 0.02;
         // 使用我們自己的 clamp 輔助函式
@@ -245,14 +245,14 @@ __device__ double softshadow(double3 ro, double3 rd, double k) {
 }
 
 // use gradient to calc surface normal
-__device__ double3 calcNor(double3 p) {
-    double2 e = make_double2(d_params.eps, 0.0);
+__device__ float3 calcNor(float3 p) {
+    float2 e = make_float2(d_params.eps, 0.0);
     
-    double3 e_xyy = make_double3(e.x, e.y, e.y); // (eps, 0, 0)
-    double3 e_yxy = make_double3(e.y, e.x, e.y); // (0, eps, 0)
-    double3 e_yyx = make_double3(e.y, e.y, e.x); // (0, 0, eps)
+    float3 e_xyy = make_float3(e.x, e.y, e.y); // (eps, 0, 0)
+    float3 e_yxy = make_float3(e.y, e.x, e.y); // (0, eps, 0)
+    float3 e_yyx = make_float3(e.y, e.y, e.x); // (0, 0, eps)
 
-    return normalize(make_double3( 
+    return normalize(make_float3( 
         map(p + e_xyy) - map(p - e_xyy),
         map(p + e_yxy) - map(p - e_yxy),
         map(p + e_yyx) - map(p - e_yyx)
@@ -260,9 +260,9 @@ __device__ double3 calcNor(double3 p) {
 }
 
 // first march: find object's surface
-__device__ double trace(double3 ro, double3 rd, double& trap, int& ID) {
-    double t = 0;
-    double len = 0;
+__device__ float trace(float3 ro, float3 rd, float& trap, int& ID) {
+    float t = 0;
+    float len = 0;
 
     for (int i = 0; i < d_params.ray_step; ++i) {
         len = map(ro + rd * t, trap, ID);
@@ -291,72 +291,72 @@ __global__ void render_kernel(unsigned char* d_image, int width, int height) {
 
     // --- 程式碼主體：從 CPU main() 迴圈中複製而來 ---
     
-    double fcol_r = 0.0;
-    double fcol_g = 0.0;
-    double fcol_b = 0.0;
+    float fcol_r = 0.0;
+    float fcol_g = 0.0;
+    float fcol_b = 0.0;
 
     // anti aliasing
     for (int m = 0; m < d_params.AA; ++m) {
         for (int n = 0; n < d_params.AA; ++n) {
             
-            double2 p = make_double2((double)j, (double)i) + 
-                       make_double2((double)m, (double)n) / (double)d_params.AA;
+            float2 p = make_float2((float)j, (float)i) + 
+                       make_float2((float)m, (float)n) / (float)d_params.AA;
 
             // vec2 uv = ... (使用 d_params.iResolution)
             // (原始碼中 -iResolution.xy() + 2. * p)
-            double2 uv = (make_double2(2.*p.x, 2.*p.y) - d_params.iResolution) / d_params.iResolution.y;
+            float2 uv = (make_float2(2.*p.x, 2.*p.y) - d_params.iResolution) / d_params.iResolution.y;
             uv.y *= -1; // Y 軸翻轉
 
             // create camera
-            double3 ro = d_params.camera_pos;
-            double3 ta = d_params.target_pos;
-            double3 cf = normalize(ta - ro); 
-            double3 cs = normalize(cross(cf, make_double3(0., 1., 0.))); 
-            double3 cu = normalize(cross(cs, cf));
-            double3 rd = normalize(uv.x * cs + uv.y * cu + d_params.FOV * cf);
+            float3 ro = d_params.camera_pos;
+            float3 ta = d_params.target_pos;
+            float3 cf = normalize(ta - ro); 
+            float3 cs = normalize(cross(cf, make_float3(0., 1., 0.))); 
+            float3 cu = normalize(cross(cs, cf));
+            float3 rd = normalize(uv.x * cs + uv.y * cu + d_params.FOV * cf);
 
             // marching
-            double trap;
+            float trap;
             int objID;
-            double d = trace(ro, rd, trap, objID);
+            float d = trace(ro, rd, trap, objID);
 
             // lighting
-            double3 col = make_double3(0.0, 0.0, 0.0);
-            double3 sd = normalize(d_params.camera_pos); // Sun direction
-            double3 sc = make_double3(1., .9, .717);     // Light color
+            float3 col = make_float3(0.0, 0.0, 0.0);
+            float3 sd = normalize(d_params.camera_pos); // Sun direction
+            float3 sc = make_float3(1., .9, .717);     // Light color
 
             // coloring
             if (d < 0.) { // miss (hit sky)
-                col = make_double3(0.0, 0.0, 0.0); // sky color (black)
+                col = make_float3(0.0, 0.0, 0.0); // sky color (black)
             } else {
-                double3 pos = ro + rd * d;
-                double3 nr = calcNor(pos);
-                double3 hal = normalize(sd - rd); // blinn-phong
+                float3 pos = ro + rd * d;
+                float3 nr = calcNor(pos);
+                float3 hal = normalize(sd - rd); // blinn-phong
 
-                col = pal(trap - .4, make_double3(.5, .5, .5), make_double3(.5, .5, .5), 
-                          make_double3(1., 1., 1.), make_double3(.0, .1, .2));
-                double3 ambc = make_double3(0.3, 0.3, 0.3);
-                double gloss = 32.;
+                col = pal(trap - .4, make_float3(.5, .5, .5), make_float3(.5, .5, .5), 
+                          make_float3(1., 1., 1.), make_float3(.0, .1, .2));
+                float3 ambc = make_float3(0.3, 0.3, 0.3);
+                float gloss = 32.;
 
                 // simple blinn phong
-                double amb = (0.7 + 0.3 * nr.y) * (0.2 + 0.8 * clamp(0.05 * log(trap), 0.0, 1.0));
-                double sdw = softshadow(pos + 0.001 * nr, sd, 16.);
-                double dif = clamp(dot(sd, nr), 0., 1.) * sdw;
-                double spe = pow(clamp(dot(nr, hal), 0., 1.), gloss) * dif;
+                float amb = (0.7 + 0.3 * nr.y) * (0.2 + 0.8 * clamp(0.05 * log(trap), 0.0, 1.0));
+                float sdw = softshadow(pos + 0.001 * nr, sd, 16.);
+                float dif = clamp(dot(sd, nr), 0., 1.) * sdw;
+                float spe = pow(clamp(dot(nr, hal), 0., 1.), gloss) * dif;
 
-                double3 lin = make_double3(0.0, 0.0, 0.0);
+                float3 lin = make_float3(0.0, 0.0, 0.0);
                 lin += ambc * (.05 + .95 * amb);
                 lin += sc * dif * 0.8;
                 col *= lin;
 
                 // 逐元素 pow
-                col = pow(col, make_double3(0.7, 0.9, 1.0));
+                col = pow(col, make_float3(0.7, 0.9, 1.0));
                 col += spe * 0.8;
             }
 
             // Gamma correction 
-            // 這裡現在會呼叫我們新增的 clamp(double3, double, double) 重載
-            col = clamp(pow(col, make_double3(0.4545, 0.4545, 0.4545)), 0.0, 1.0);
+            // 這裡現在會呼叫我們新增的 clamp(float3, float, float) 重載
+            col = clamp(pow(col, make_float3(0.4545, 0.4545, 0.4545)), 0.0, 1.0);
             
             fcol_r += col.x; 
             fcol_g += col.y; 
@@ -365,9 +365,9 @@ __global__ void render_kernel(unsigned char* d_image, int width, int height) {
     }
     // --- 迴圈結束 ---
 
-    fcol_r /= (double)(d_params.AA * d_params.AA);
-    fcol_g /= (double)(d_params.AA * d_params.AA);
-    fcol_b /= (double)(d_params.AA * d_params.AA);
+    fcol_r /= (float)(d_params.AA * d_params.AA);
+    fcol_g /= (float)(d_params.AA * d_params.AA);
+    fcol_b /= (float)(d_params.AA * d_params.AA);
     
     fcol_r *= 255.0;
     fcol_g *= 255.0;
@@ -393,13 +393,13 @@ int main(int argc, char** argv) {
     //--- init arguments
     RenderParams h_params; 
     
-    h_params.camera_pos = make_double3(atof(argv[1]), atof(argv[2]), atof(argv[3]));
-    h_params.target_pos = make_double3(atof(argv[4]), atof(argv[5]), atof(argv[6]));
+    h_params.camera_pos = make_float3((float)atof(argv[1]), (float)atof(argv[2]), (float)atof(argv[3]));
+    h_params.target_pos = make_float3((float)atof(argv[4]), (float)atof(argv[5]), (float)atof(argv[6]));
     
     unsigned int width = atoi(argv[7]);
     unsigned int height = atoi(argv[8]);
 
-    h_params.iResolution = make_double2((double)width, (double)height);
+    h_params.iResolution = make_float2((float)width, (float)height);
 
     // 填入其他全域參數
     h_params.AA = AA;
