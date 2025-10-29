@@ -302,6 +302,13 @@ __global__ void render_kernel(unsigned char* d_image, int width, int height) {
     float fcol_g = 0.0;
     float fcol_b = 0.0;
 
+    // create camera
+    float3 ro = d_params.camera_pos;
+    float3 ta = d_params.target_pos;
+    float3 cf = normalize(ta - ro); 
+    float3 cs = normalize(cross(cf, make_float3(0., 1., 0.))); 
+    float3 cu = normalize(cross(cs, cf));
+
     // anti aliasing
     for (int m = 0; m < d_params.AA; ++m) {
         for (int n = 0; n < d_params.AA; ++n) {
@@ -314,12 +321,6 @@ __global__ void render_kernel(unsigned char* d_image, int width, int height) {
             float2 uv = (make_float2(2.*p.x, 2.*p.y) - d_params.iResolution) / d_params.iResolution.y;
             uv.y *= -1; // Y 軸翻轉
 
-            // create camera
-            float3 ro = d_params.camera_pos;
-            float3 ta = d_params.target_pos;
-            float3 cf = normalize(ta - ro); 
-            float3 cs = normalize(cross(cf, make_float3(0., 1., 0.))); 
-            float3 cu = normalize(cross(cs, cf));
             float3 rd = normalize(uv.x * cs + uv.y * cu + d_params.FOV * cf);
 
             // marching
