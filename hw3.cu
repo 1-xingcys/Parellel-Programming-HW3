@@ -475,7 +475,7 @@ int main(int argc, char** argv) {
 
     float milliseconds = 0;
     CUDA_CHECK(cudaEventElapsedTime(&milliseconds, start, stop));
-    printf("Kernel execution time: %.3f ms\n", milliseconds);
+    // printf("Kernel execution time: %.3f ms\n", milliseconds);
     // printf("Rendering complete. Copying image from GPU to CPU...\n");
 
     // 8. 將 GPU (d_image) 上的結果複製回 CPU (raw_image)
